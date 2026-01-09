@@ -1,0 +1,229 @@
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import Card, { CardHeader, CardBody } from "../../components/ui/Card";
+import { Table, TableHeader, TableBody, TableRow, TableCell } from "../../components/ui/Table";
+import { getMyAttendance } from "../../services/attendanceService";
+
+export default function EmployeeDashboard() {
+  const [attendance, setAttendance] = useState([]);
+  const [stats, setStats] = useState({
+    presentThisMonth: 0,
+    leavesThisMonth: 0,
+    attendanceRate: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const res = await getMyAttendance();
+      const data = res.data || [];
+      setAttendance(data.slice(0, 10));
+
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      const monthData = data.filter((record) => {
+        const recordDate = new Date(record.date);
+        return (
+          recordDate.getMonth() === currentMonth &&
+          recordDate.getFullYear() === currentYear
+        );
+      });
+
+      const present = monthData.filter((r) => r.status === "Present").length;
+      const leaves = monthData.filter((r) => r.status === "Leave").length;
+      const total = monthData.length;
+      const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+      setStats({
+        presentThisMonth: present,
+        leavesThisMonth: leaves,
+        attendanceRate: rate,
+      });
+    } catch (error) {
+      console.error("Error loading dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statCards = [
+    {
+      title: "Present This Month",
+      value: stats.presentThisMonth,
+      icon: "✓",
+      color: "bg-green-500",
+      link: "/attendance/history",
+    },
+    {
+      title: "Leaves This Month",
+      value: stats.leavesThisMonth,
+      icon: "📋",
+      color: "bg-orange-500",
+      link: "/attendance/history",
+    },
+    {
+      title: "Attendance Rate",
+      value: `${stats.attendanceRate}%`,
+      icon: "📊",
+      color: "bg-blue-500",
+      link: "/attendance/history",
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">
+          Employee Dashboard
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          Welcome! Manage your attendance, leaves, and payslips
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          to="/attendance/mark"
+          className="block p-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] hover:shadow-lg transition-shadow"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-500 text-white text-xl">
+              ✓
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-800 dark:text-white">
+                Mark Attendance
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Mark your attendance for today
+              </p>
+            </div>
+          </div>
+        </Link>
+
+        <Link
+          to="/payroll/list"
+          className="block p-6 rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] hover:shadow-lg transition-shadow"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500 text-white text-xl">
+              💰
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-800 dark:text-white">
+                View Payslips
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Download your payslips
+              </p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {statCards.map((stat, index) => (
+          <Link key={index} to={stat.link}>
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+              <CardBody>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                      {stat.title}
+                    </p>
+                    <p className="mt-2 text-2xl font-semibold text-gray-800 dark:text-white">
+                      {stat.value}
+                    </p>
+                  </div>
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-lg ${stat.color} text-white text-2xl`}
+                  >
+                    {stat.icon}
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      <Card>
+        <CardHeader title="Recent Attendance" />
+        <CardBody>
+          {loading ? (
+            <div className="text-center py-8 text-gray-500">Loading...</div>
+          ) : attendance.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No attendance records found
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="border-b border-gray-100 dark:border-gray-800">
+                  <TableRow>
+                    <TableCell
+                      isHeader
+                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                    >
+                      Date
+                    </TableCell>
+                    <TableCell
+                      isHeader
+                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                    >
+                      Status
+                    </TableCell>
+                    <TableCell
+                      isHeader
+                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                    >
+                      Check In
+                    </TableCell>
+                    <TableCell
+                      isHeader
+                      className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                    >
+                      Check Out
+                    </TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {attendance.map((record, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="px-5 py-3 text-theme-sm text-gray-800 dark:text-white">
+                        {new Date(record.date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="px-5 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            record.status === "Present"
+                              ? "bg-success-100 text-success-700 dark:bg-success-500/20 dark:text-success-400"
+                              : record.status === "Absent"
+                              ? "bg-error-100 text-error-700 dark:bg-error-500/20 dark:text-error-400"
+                              : "bg-warning-100 text-warning-700 dark:bg-warning-500/20 dark:text-warning-400"
+                          }`}
+                        >
+                          {record.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-theme-sm text-gray-800 dark:text-white">
+                        {record.checkIn || "N/A"}
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-theme-sm text-gray-800 dark:text-white">
+                        {record.checkOut || "N/A"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
